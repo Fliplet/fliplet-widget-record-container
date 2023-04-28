@@ -4,11 +4,11 @@ const recordContainerInstances = [];
 
 Fliplet().then(function() {
   Fliplet.Widget.instance('record-container', function(data, parent) {
-    const renderingOption = data.renderingOption || 'default';
-
     const container = new Promise((resolve) => {
       let loadData;
       let _dataSourceConnection;
+
+      // Get the current data source entry ID from the URL
       let dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
 
       // Find child props
@@ -27,30 +27,18 @@ Fliplet().then(function() {
         name: data.name,
         data: {
           entry: {},
-          renderingOption,
           parent: parent
         },
         methods: {
           _setData(key, data) {
-            return Fliplet.Hooks.run('containerDataRetrieved', { container: this, key, data }).then(() => {
-              if (!data) {
-                return;
-              }
+            if (!data) {
+              return;
+            }
 
-              if (typeof this[key] === 'undefined') {
-                return this.$set(this.context, key, data);
-              }
+            this[key] = data;
 
-              if (Array.isArray(data) && typeof data.update !== 'function') {
-                this.context.length = 0;
-                this.context.push(...data);
-              } else {
-                this.context = data;
-              }
-
-              this._updateVisibility();
-              this._updatePropTags();
-            });
+            this._updateVisibility();
+            this._updatePropTags();
           },
           _updateVisibility() {
             // Show/hide empty state containers
@@ -78,7 +66,7 @@ Fliplet().then(function() {
           load(key, fn) {
             if (typeof key === 'function') {
               fn = key;
-              key = 'context';
+              key = 'entry';
             }
 
             let result = fn();
@@ -104,10 +92,15 @@ Fliplet().then(function() {
             dataSourceId: data.dataSourceId,
             dataSourceEntryId: dataSourceEntryId
           }).then((result) => {
-            if (result) {
+            // Merge all results into a single object
+            result = _.extend.apply(this, [{}].concat(result));
+
+            // If the result is an object and it has keys, we assume it's a query
+            if (typeof result === 'object' && Object.keys(result).length) {
               return connection.findOne(result);
             }
 
+            // Load the entry by ID
             if (dataSourceEntryId) {
               return connection.findById(dataSourceEntryId);
             }
@@ -119,26 +112,27 @@ Fliplet().then(function() {
 
       loadData.then((entry) => {
         if (typeof entry === 'object') {
-          Fliplet.Hooks.run('recordContainerAfterRetrieveData', {
+          Fliplet.Hooks.run('recordContainerDataRetrieved', {
             container: this,
             entry: entry,
             vm: vm
           });
         }
 
-        vm._setData('entry', entry).then(() => {
-          if (renderingOption === 'wait') {
-            Fliplet.Widget.initializeChildren(this, vm);
-          }
+        // Set the entry data
+        vm._setData('entry', entry);
 
-          resolve(vm);
-        });
+        // Initialize children
+        Fliplet.Widget.initializeChildren(this, vm);
+
+        // Resolve the promise and return the Vue instance
+        resolve(vm);
       }).catch((err) => {
+        // eslint-disable-next-line no-console
         console.error('[RECORD CONTAINER] Error fetching data', err);
         resolve(vm);
       });
 
-      Fliplet.Widget.initializeChildren(this, vm);
       resolve(vm);
     });
 

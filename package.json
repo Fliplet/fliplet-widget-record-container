@@ -1,7 +1,7 @@
 {
-  "name": "record-container",
+  "name": "fliplet-record-container",
   "version": "1.0.0",
-  "description": "record-container",
+  "description": "fliplet-record-container",
   "author": "",
   "private": true,
   "scripts": {
