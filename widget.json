@@ -1,0 +1,34 @@
+{
+  "name": "Record container",
+  "package": "com.fliplet.record-container",
+  "version": "1.0.0",
+  "description": "",
+  "icon": "img/icon.png",
+  "tags": ["type:component", "category:layout"],
+  "provider_only": false,
+  "references": [
+    "content:richContent"
+  ],
+  "html_tag": "div",
+  "interface": {
+    "dependencies": [
+      "vue.js",
+      "fliplet-core",
+      "fliplet-studio-ui"
+    ],
+    "assets": [
+      "dist/css/index.css",
+      "dist/app.js"
+    ]
+  },
+  "build": {
+    "dependencies": [
+      "vue.js",
+      "fliplet-core",
+      "fliplet-datasources"
+    ],
+    "assets": [
+      "js/build.js"
+    ]
+  }
+}
