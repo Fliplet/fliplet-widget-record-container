@@ -1,6 +1,6 @@
 Fliplet.RecordContainer = Fliplet.RecordContainer || {};
 
-let recordContainerInstances = [];
+window._recordContainerInstances = [];
 
 Fliplet().then(function() {
   Fliplet.Widget.instance('record-container', function(data, parent) {
@@ -160,7 +160,7 @@ Fliplet().then(function() {
       resolve(vm);
     });
 
-    recordContainerInstances.push(container);
+    window._recordContainerInstances.push(container);
   }, {
     supportsDynamicContext: true
   });
@@ -170,7 +170,7 @@ Fliplet.RecordContainer.get = function(name, options) {
   options = options || { ts: 10 };
 
   return Fliplet().then(function() {
-    return Promise.all(recordContainerInstances).then(function(containers) {
+    return Promise.all(window._recordContainerInstances).then(function(containers) {
       var container;
 
       if (typeof name === 'undefined') {
@@ -207,7 +207,7 @@ Fliplet.RecordContainer.get = function(name, options) {
 
 Fliplet.RecordContainer.getAll = function(name) {
   return Fliplet().then(function() {
-    return Promise.all(recordContainerInstances).then(function(containers) {
+    return Promise.all(window._recordContainerInstances).then(function(containers) {
       if (typeof name === 'undefined') {
         return containers;
       }
