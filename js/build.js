@@ -1,6 +1,6 @@
 Fliplet.RecordContainer = Fliplet.RecordContainer || {};
 
-const recordContainerInstances = [];
+let recordContainerInstances = [];
 
 Fliplet().then(function() {
   Fliplet.Widget.instance('record-container', function(data, parent) {
@@ -63,6 +63,27 @@ Fliplet().then(function() {
               $el.html(value);
             });
           },
+          /**
+           * Schedules an update of the data source entry
+           * @return {undefined}
+           */
+          _scheduleUpdate() {
+            switch (data.updateType) {
+              case 'informed':
+              case 'live':
+                // TODO: Update the data source entry in real time
+                break;
+              case 'none':
+              default:
+                break;
+            }
+          },
+          /**
+           * Loads data from a function and sets it to the specified key
+           * @param {String} key The key to set the data to
+           * @param {Function} fn The function to execute
+           * @returns {Promise} A promise that resolves when the data is set
+           */
           load(key, fn) {
             if (typeof key === 'function') {
               fn = key;
@@ -100,10 +121,13 @@ Fliplet().then(function() {
               return connection.findOne(result);
             }
 
-            // Load the entry by ID
-            if (dataSourceEntryId) {
+            // Load the entry by ID if the option "loadSource" is set to "query" (this is the default mode)
+            if (dataSourceEntryId && (!data.loadSource || data.loadSource === 'query')) {
               return connection.findById(dataSourceEntryId);
             }
+
+            // Scheduled automated updates when set
+            vm._scheduleUpdate();
           });
         });
       } else {
