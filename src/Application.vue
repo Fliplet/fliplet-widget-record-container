@@ -1,7 +1,6 @@
 <template>
   <div>
     <Data-Source-Provider ref="dataSourceProvider" v-on:saved="dataSourceProviderSave"></Data-Source-Provider>
-    <Load-Source-Option></Load-Source-Option>
     <Update-Type></Update-Type>
   </div>
 </template>
@@ -9,7 +8,6 @@
 <script>
 import state from './state';
 import DataSourceProvider from './components/DataSourceProvider';
-import LoadSourceOption from './components/LoadSourceOption';
 import UpdateType from './components/UpdateType';
 
 export default {
@@ -18,7 +16,6 @@ export default {
   },
   components: {
     DataSourceProvider,
-    LoadSourceOption,
     UpdateType
   },
   methods: {
