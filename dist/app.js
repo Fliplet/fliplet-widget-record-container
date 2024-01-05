@@ -601,11 +601,7 @@ var staticRenderFns = [
     var _h = _vm.$createElement
     var _c = _vm._self._c || _h
     return _c("div", { staticClass: "col-sm-4 control-label" }, [
-      _c("label", [
-        _vm._v(
-          "Choose how the data source entry is updated while the user is on the screen"
-        ),
-      ]),
+      _c("label", [_vm._v("Select data update mode")]),
     ])
   },
   function () {
@@ -616,11 +612,12 @@ var staticRenderFns = [
       _c("span", { staticClass: "check" }, [
         _c("i", { staticClass: "fa fa-circle" }),
       ]),
-      _vm._v(" Do not update (default)"),
+      _vm._v(" No update"),
       _c("br"),
+      _vm._v(" "),
       _c("p", { staticClass: "small" }, [
         _vm._v(
-          "The data source entry will not be updated while the user is on the screen."
+          "Updates are not silently applied and users won't see the changes until they load the list for the next time."
         ),
       ]),
     ])
@@ -635,9 +632,10 @@ var staticRenderFns = [
       ]),
       _vm._v(" Informed update"),
       _c("br"),
+      _vm._v(" "),
       _c("p", { staticClass: "small" }, [
         _vm._v(
-          "The data source entry will be updated while the user is on the screen. The user will be informed of the update."
+          "Users are informed if an update is available. When the user chooses to apply it, changes are applied in-situ, i.e. without a complete reload."
         ),
       ]),
     ])
@@ -652,9 +650,10 @@ var staticRenderFns = [
       ]),
       _vm._v(" Real-time update"),
       _c("br"),
+      _vm._v(" "),
       _c("p", { staticClass: "small" }, [
         _vm._v(
-          "The data source entry will be updated while the user is on the screen. The user will not be informed of the update. The contents in the screen will be updated automatically."
+          "Updates are automatically applied when they are available. Detail view can be directly loaded (via query parameter) without loading the list first."
         ),
       ]),
     ])
@@ -680,6 +679,9 @@ __webpack_require__.r(__webpack_exports__);
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _state_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(6);
+//
+//
+//
 //
 //
 //
