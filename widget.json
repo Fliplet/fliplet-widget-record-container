@@ -15,7 +15,7 @@
     "assets": ["js/interface.js"]
   },
   "build": {
-    "dependencies": ["vue.js", "fliplet-core", "fliplet-datasources"],
-    "assets": ["js/build.js"]
+    "dependencies": ["vue.js", "fliplet-core"],
+    "assets": ["css/build.css", "js/build.js"]
   }
 }
