@@ -84,7 +84,6 @@
       });
 
       // Find child props
-      // const $props = $(this).findUntil('fl-prop[data-engine]', 'fl-record-container, fl-helper, fl-list-repeater');
       const vm = new Vue({
         el: this,
         id: data.id,
@@ -93,7 +92,7 @@
           isLoading: false,
           error: undefined,
           entry: undefined,
-          noDataTemplate: data.noDataContent ||  T('widgets.recordContainer.noDataContent'),
+          noDataTemplate: data.noDataContent || T('widgets.recordContainer.noDataContent'),
           parent
         },
         components: {
@@ -169,9 +168,6 @@
 
         // Set the entry data
         vm.entry = entry;
-
-        // Initialize children
-        Fliplet.Widget.initializeChildren(this, vm);
 
         // Resolve the promise and return the Vue instance
         resolve(vm);
