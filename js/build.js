@@ -77,6 +77,9 @@
         },
         render(createElement) {
           return compiledRecordTemplate.render.call(this, createElement);
+        },
+        mounted() {
+          Fliplet.Widget.initializeChildren(this.$el, this);
         }
       });
 
