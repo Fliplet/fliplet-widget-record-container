@@ -1,7 +1,7 @@
 (function() {
   Fliplet.RecordContainer = Fliplet.RecordContainer || {};
 
-  const recordContainerInstances = [];
+  const recordContainerInstances = {};
   const isInteract = Fliplet.Env.get('interact');
 
   const sampleData = isInteract
@@ -9,7 +9,11 @@
     : undefined;
 
   function getHtmlKeyFromPath(path) {
-    return `path${CryptoJS.MD5(path).toString().substr(-6)}`;
+    return `data${CryptoJS.MD5(path).toString().substr(-6)}`;
+  }
+
+  function normalizePath(path) {
+    return path.startsWith('$') ? path.substr(1) : `entry.data.${path}`;
   }
 
   Fliplet.Widget.instance('record-container', function(data, parent) {
@@ -18,17 +22,21 @@
     const templateViewName = 'content';
     const templateNodeName = 'Content';
     const recordTemplatePaths = [];
+    const testDataObject = {};
     let compiledRecordTemplate;
 
     let recordTemplate = $('<div></div>').append($($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
-      const path = el.getAttribute('data-path');
+      const path = normalizePath(el.getAttribute('data-path'));
+      let pathObject = _.get(testDataObject, path);
 
-      if (recordTemplatePaths.indexOf(path) === -1) {
-        recordTemplatePaths.push(path);
+      if (!pathObject) {
+        // Provide a unique alphanumeric key for the path suitable for v-html
+        pathObject = { path, key: getHtmlKeyFromPath(path) };
+        _.set(testDataObject, path, pathObject);
+        recordTemplatePaths.push(pathObject);
       }
 
-      // Set the v-html attribute to a unique alphanumeric key based on the path
-      el.setAttribute('v-html', `data.${ getHtmlKeyFromPath(path) }`);
+      el.setAttribute('v-html', `data.${ pathObject.key }`);
     }).end()).html();
     const emptyTemplate = $emptyTemplate.html();
 
@@ -41,6 +49,7 @@
       function getTemplateForHtml() {
         const recordTag = document.createElement('fl-record');
 
+        recordTag.setAttribute(':data-entry-id', 'entry.id');
         recordTag.setAttribute('v-bind', 'attrs');
 
         recordTag.innerHTML = recordTemplate || (isInteract ? emptyTemplate : '');
@@ -62,24 +71,46 @@
               'data-view': templateViewName,
               'data-node-name': templateNodeName
             },
-            data: {}
+            data: {},
+            viewContainer: undefined
           };
 
-          if (!isInteract) {
-            // Loop through the row template paths and set the data for v-html
-            recordTemplatePaths.forEach((path) => {
-              result.data[getHtmlKeyFromPath(path)] = _.get(this, path);
+          return result;
+        },
+        watch: {
+          entry() {
+            this.setData();
+          }
+        },
+        methods: {
+          setData() {
+            if (isInteract) {
+              return;
+            }
+
+            // Loop through the record template paths and set the data for v-html
+            recordTemplatePaths.forEach((pathObject) => {
+              this.$set(this.data, pathObject.key, _.get(this, pathObject.path));
             });
           }
-
-
-          return result;
         },
         render(createElement) {
           return compiledRecordTemplate.render.call(this, createElement);
         },
         mounted() {
+          this.setData();
+
           Fliplet.Widget.initializeChildren(this.$el, this);
+
+          if (!isInteract) {
+            return;
+          }
+
+          /* Edit mode only */
+
+          this.viewContainer = new Fliplet.Interact.ViewContainer(this.$el, {
+            placeholder: emptyTemplate
+          });
         }
       });
 
@@ -132,7 +163,7 @@
           return Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
             container: this,
             connection: connection,
-            vm,
+            instance: vm,
             dataSourceId: connection.id,
             dataSourceEntryId
           }).then((result) => {
@@ -175,11 +206,13 @@
         Fliplet.Hooks.run('recordContainerDataRetrieved', {
           container: this,
           entry,
-          vm
+          instance: vm
         });
       }).catch((error) => {
         vm.isLoading = false;
         vm.error = error;
+
+        Fliplet.Hooks.run('recordContainerDataRetrieveError', { instance: vm, error });
 
         vm.$nextTick(() => {
           $(vm.$el).find('.record-container-load-error').translate();
@@ -193,7 +226,8 @@
       resolve(vm);
     });
 
-    recordContainerInstances.push(container);
+    container.id = data.id;
+    recordContainerInstances[data.id] = container;
   }, {
     supportsDynamicContext: true
   });
@@ -206,7 +240,7 @@
     options = options || { ts: 10 };
 
     return Fliplet().then(function() {
-      return Promise.all(recordContainerInstances).then(function(containers) {
+      return Promise.all(_.values(recordContainerInstances)).then(function(containers) {
         var container;
 
         if (typeof filter === 'undefined') {
@@ -241,7 +275,7 @@
     }
 
     return Fliplet().then(function() {
-      return Promise.all(recordContainerInstances).then(function(containers) {
+      return Promise.all(_.values(recordContainerInstances)).then(function(containers) {
         if (typeof filter === 'undefined') {
           return containers;
         }
