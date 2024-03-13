@@ -52,7 +52,7 @@
         recordTag.setAttribute(':data-entry-id', 'entry.id');
         recordTag.setAttribute('v-bind', 'attrs');
 
-        recordTag.innerHTML = recordTemplate || (isInteract ? emptyTemplate : '');
+        $(recordTag).html(recordTemplate || (isInteract ? emptyTemplate : ''));
 
         return recordTag.outerHTML;
       }
