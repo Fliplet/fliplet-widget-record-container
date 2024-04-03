@@ -124,7 +124,16 @@
           error: undefined,
           entry: undefined,
           noDataTemplate: data.noDataContent || T('widgets.recordContainer.noDataContent'),
-          parent
+          parent,
+          pendingUpdates: {
+            updated: [],
+            deleted: []
+          }
+        },
+        computed: {
+          hasPendingUpdates() {
+            return Object.values(this.pendingUpdates).some(value => value.length);
+          }
         },
         components: {
           record: recordComponent
@@ -135,15 +144,104 @@
           }
         },
         methods: {
-          /**
-           * Schedules an update of the data source entry
-           * @return {undefined}
-           */
-          _scheduleUpdate() {
+          onUpdate(updates = []) {
+            updates.forEach(update => {
+              // Otherwise, update or add to the updated array
+              const existingIndex = this.pendingUpdates.updated.findIndex(row => row.id === update.id);
+
+              if (existingIndex !== -1) {
+                this.$set(this.pendingUpdates.updated, existingIndex, update);
+              } else {
+                this.pendingUpdates.updated.push(update);
+              }
+            });
+          },
+          onDelete(deletions = []) {
+            deletions.forEach(deletion => {
+              // Remove from updated if present
+              const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion.id);
+
+              if (updatedIndex !== -1) {
+                this.pendingUpdates.updated.splice(updatedIndex, 1);
+              }
+
+              // Finally, add to deleted if not already there and not in inserted
+              if (!this.pendingUpdates.deleted.includes(deletion.id)) {
+                this.pendingUpdates.deleted.push(deletion.id);
+              }
+            });
+          },
+          applyUpdates() {
+            // Apply updated entries
+            this.pendingUpdates.updated.forEach(update => {
+              if (update.id !== this.entry.id) {
+                return;
+              }
+
+              this.entry = update;
+            });
+
+            // Remove deleted entries
+            this.pendingUpdates.deleted.forEach(deletedId => {
+              if (deletedId.id !== this.entry.id) {
+                return;
+              }
+
+              this.entry = undefined;
+            });
+
+            // Reset pendingUpdates
+            this.pendingUpdates = {
+              updated: [],
+              deleted: []
+            };
+          },
+          subscribe(connection, entry) {
+            if (!entry) {
+              return; // No entry to subscribe to
+            }
+
             switch (data.updateType) {
               case 'informed':
               case 'live':
-                // TODO: Update the data source entry in real time
+                // Deletions can be handled but currently isn't being monitored
+                // because API is incomplete to provide the necessary information
+                var events = ['update'];
+
+                this.subscription = connection.subscribe({ id: entry.id, events }, (bundle) => {
+                  if (events.includes('update')) {
+                    this.onUpdate(bundle.updated);
+                  }
+
+                  if (events.includes('delete')) {
+                    this.onDelete(bundle.deleted);
+                  }
+
+                  if (data.updateType === 'live') {
+                    this.applyUpdates();
+                  } else if (this.hasPendingUpdates) {
+                    // Show toast message
+                    Fliplet.UI.Toast({
+                      message: 'New data available',
+                      duration: false,
+                      actions: [
+                        {
+                          label: 'Refresh',
+                          action() {
+                            vm.applyUpdates();
+                          }
+                        },
+                        {
+                          icon: 'fa-times',
+                          title: 'Ignore',
+                          action() {
+                            // Do nothing
+                          }
+                        }
+                      ]
+                    });
+                  }
+                });
                 break;
               case 'none':
               default:
@@ -179,9 +277,10 @@
             if (dataSourceEntryId && (!data.loadSource || data.loadSource === 'query')) {
               return connection.findById(dataSourceEntryId);
             }
+          }).then((entry) => {
+            vm.subscribe(connection, entry);
 
-            // Scheduled automated updates when set
-            vm._scheduleUpdate();
+            return entry;
           }).catch((error) => {
             if (error && error.status === 404) {
               return Promise.resolve();
