@@ -1,0 +1,10 @@
+{
+  "widgets": {
+    "recordContainer": {
+      "noDataContent": "No data found",
+      "errors": {
+        "loadingData": "Error loading data"
+      }
+    }
+  }
+}
