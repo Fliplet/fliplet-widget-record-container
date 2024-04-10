@@ -25,7 +25,7 @@
     const testDataObject = {};
     let compiledRecordTemplate;
 
-    let recordTemplate = $('<div></div>').append($($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
+    let recordTemplate = $('<div></div>').html($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
       const path = normalizePath(el.getAttribute('data-path'));
       let pathObject = _.get(testDataObject, path);
 
@@ -37,7 +37,7 @@
       }
 
       el.setAttribute('v-html', `data.${ pathObject.key }`);
-    }).end()).html();
+    }).end().html();
     const emptyTemplate = $emptyTemplate.html();
 
     $recordTemplate.remove();
