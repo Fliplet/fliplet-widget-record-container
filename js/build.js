@@ -16,7 +16,7 @@
     return path.startsWith('$') ? path.substr(1) : `entry.data.${path}`;
   }
 
-  Fliplet.Widget.instance('record-container', function(data, parent) {
+  Fliplet.Widget.instance('record-container', async function(data, parent) {
     const $recordTemplate = $(this).find('template[name="record"]').eq(0);
     const $emptyTemplate = $(this).find('template[name="empty"]').eq(0);
     const templateViewName = 'content';
@@ -25,7 +25,7 @@
     const testDataObject = {};
     let compiledRecordTemplate;
 
-    let recordTemplate = $('<div></div>').append($($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
+    let recordTemplate = $('<div></div>').html($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
       const path = normalizePath(el.getAttribute('data-path'));
       let pathObject = _.get(testDataObject, path);
 
@@ -37,11 +37,20 @@
       }
 
       el.setAttribute('v-html', `data.${ pathObject.key }`);
-    }).end()).html();
+    }).end().html();
     const emptyTemplate = $emptyTemplate.html();
 
     $recordTemplate.remove();
     $emptyTemplate.remove();
+
+    let [parent] = await Fliplet.Widget.findParents({
+      instanceId: data.id,
+      filter: { package: 'com.fliplet.dynamic-container' }
+    });
+
+    if (parent) {
+      parent = await Fliplet.DynamicContainer.get(parent.id);
+    }
 
     const container = new Promise((resolve) => {
       let loadData;
