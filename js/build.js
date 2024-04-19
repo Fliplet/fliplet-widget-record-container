@@ -16,7 +16,7 @@
     return path.startsWith('$') ? path.substr(1) : `entry.data.${path}`;
   }
 
-  Fliplet.Widget.instance('record-container', async function(data, parent) {
+  Fliplet.Widget.instance('record-container', async function(data) {
     const $recordTemplate = $(this).find('template[name="record"]').eq(0);
     const $emptyTemplate = $(this).find('template[name="empty"]').eq(0);
     const templateViewName = 'content';
