@@ -242,7 +242,6 @@
                         },
                         {
                           icon: 'fa-times',
-                          title: 'Ignore',
                           action() {
                             // Do nothing
                           }
