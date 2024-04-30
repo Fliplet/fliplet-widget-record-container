@@ -89,6 +89,8 @@
         watch: {
           entry() {
             this.setData();
+
+            Fliplet.Widget.initializeChildren(this.$el, this);
           }
         },
         methods: {
