@@ -1,6 +1,9 @@
 <fl-record-container data-widget-name="record-container" data-record-container-id="{{id}}">
   <template type="text/html" name="record">{{{content}}}</template>
   <template type="text/html" name="empty"><div data-view-placeholder>Drag &amp; drop <strong>Text</strong> or <strong>Dynamic image</strong> component here to render dynamic data</div></template>
+  <template v-if="testMode">
+    <div class="record-container-test-mode alert alert-info" data-translate="widgets.recordContainer.testMode"></div>
+  </template>
   <template v-if="error">
     <div class="record-container-load-error">
       <p data-translate="widgets.recordContainer.errors.loadingData"></p>

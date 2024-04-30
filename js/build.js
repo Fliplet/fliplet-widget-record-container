@@ -90,7 +90,9 @@
           entry() {
             this.setData();
 
-            Fliplet.Widget.initializeChildren(this.$el, this);
+            Fliplet.Widget.initializeChildren(this.$el, this).then(() => {
+              Fliplet.Widget.autosize();
+            });
           }
         },
         methods: {
@@ -111,7 +113,9 @@
         mounted() {
           this.setData();
 
-          Fliplet.Widget.initializeChildren(this.$el, this);
+          Fliplet.Widget.initializeChildren(this.$el, this).then(() => {
+            Fliplet.Widget.autosize();
+          });
 
           if (!isInteract) {
             return;
@@ -135,6 +139,7 @@
           error: undefined,
           entry: undefined,
           noDataTemplate: data.noDataContent || T('widgets.recordContainer.noDataContent'),
+          testMode: data.testMode,
           parent,
           pendingUpdates: {
             updated: [],
@@ -259,81 +264,86 @@
                 break;
             }
           }
+        },
+        mounted() {
+          if (isInteract) {
+            loadData = Promise.resolve(sampleData);
+          } else if (parent && typeof parent.connection === 'function') {
+            this.isLoading = true;
+            this.error = undefined;
+
+            loadData = parent.connection().then((connection) => {
+              return Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
+                container: this.$el,
+                connection: connection,
+                instance: this,
+                dataSourceId: connection.id,
+                dataSourceEntryId
+              }).then((result) => {
+                // Merge all results into a single object
+                result = _.extend.apply(this, [{}].concat(result));
+
+                // If the result is an object and it has keys, we assume it's a query
+                if (typeof result === 'object' && Object.keys(result).length) {
+                  return connection.findOne(result);
+                }
+
+                if (!dataSourceEntryId && this.testMode) {
+                  return connection.findOne();
+                }
+
+                // Load the entry by ID
+                if (dataSourceEntryId) {
+                  return connection.findById(dataSourceEntryId);
+                }
+              }).then((entry) => {
+                this.subscribe(connection, entry);
+
+                return entry;
+              }).catch((error) => {
+                if (error && error.status === 404) {
+                  return Promise.resolve();
+                }
+
+                return Promise.reject(error);
+              });
+            });
+          } else {
+            loadData = Promise.resolve();
+          }
+
+          loadData.then((entry) => {
+            this.isLoading = false;
+
+            // Set the entry data
+            this.entry = entry;
+
+            // Resolve the promise and return the Vue instance
+            resolve(this);
+
+            Fliplet.Hooks.run('recordContainerDataRetrieved', {
+              container: this.$el,
+              entry,
+              instance: this
+            });
+
+            $(this.$el).translate();
+          }).catch((error) => {
+            this.isLoading = false;
+            this.error = error;
+
+            Fliplet.Hooks.run('recordContainerDataRetrieveError', { instance: this, error });
+
+            $(this.$el).translate();
+
+            // eslint-disable-next-line no-console
+            console.error('[RECORD CONTAINER] Error fetching data', error);
+            resolve(this);
+          });
+
+          resolve(this);
         }
       });
-
-      if (isInteract) {
-        loadData = Promise.resolve(sampleData);
-      } else if (parent && typeof parent.connection === 'function') {
-        vm.isLoading = true;
-        vm.error = undefined;
-
-        loadData = parent.connection().then((connection) => {
-          return Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
-            container: this,
-            connection: connection,
-            instance: vm,
-            dataSourceId: connection.id,
-            dataSourceEntryId
-          }).then((result) => {
-            // Merge all results into a single object
-            result = _.extend.apply(this, [{}].concat(result));
-
-            // If the result is an object and it has keys, we assume it's a query
-            if (typeof result === 'object' && Object.keys(result).length) {
-              return connection.findOne(result);
-            }
-
-            // Load the entry by ID if the option "loadSource" is set to "query" (this is the default mode)
-            if (dataSourceEntryId && (!data.loadSource || data.loadSource === 'query')) {
-              return connection.findById(dataSourceEntryId);
-            }
-          }).then((entry) => {
-            vm.subscribe(connection, entry);
-
-            return entry;
-          }).catch((error) => {
-            if (error && error.status === 404) {
-              return Promise.resolve();
-            }
-
-            return Promise.reject(error);
-          });
-        });
-      } else {
-        loadData = Promise.resolve();
-      }
-
-      loadData.then((entry) => {
-        vm.isLoading = false;
-
-        // Set the entry data
-        vm.entry = entry;
-
-        // Resolve the promise and return the Vue instance
-        resolve(vm);
-
-        Fliplet.Hooks.run('recordContainerDataRetrieved', {
-          container: this,
-          entry,
-          instance: vm
-        });
-      }).catch((error) => {
-        vm.isLoading = false;
-        vm.error = error;
-
-        Fliplet.Hooks.run('recordContainerDataRetrieveError', { instance: vm, error });
-
-        vm.$nextTick(() => {
-          $(vm.$el).find('.record-container-load-error').translate();
-        });
-
-        // eslint-disable-next-line no-console
-        console.error('[RECORD CONTAINER] Error fetching data', error);
-        resolve(vm);
-      });
-
-      resolve(vm);
     });
 
     container.id = data.id;

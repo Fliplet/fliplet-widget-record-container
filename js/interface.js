@@ -1,6 +1,16 @@
 Fliplet.Widget.generateInterface({
   fields: [
     {
+      type: 'html',
+      html: '<div class="alert alert-info">Entry will be loaded based on the URL parameter <code>dataSourceEntryId</code>.</div>'
+    },
+    {
+      type: 'toggle',
+      name: 'testMode',
+      label: 'Enable test mode',
+      toggleLabel: 'Show the first entry found if no entry is specified'
+    },
+    {
       type: 'radio',
       name: 'updateType',
       label: 'Select data update mode',
