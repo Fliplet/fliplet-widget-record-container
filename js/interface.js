@@ -30,6 +30,8 @@ Fliplet.Widget.generateInterface({
       type: 'radio',
       name: 'updateType',
       label: 'Select data update mode',
+      required: true,
+      default: 'none',
       options: [
         {
           value: 'none',
