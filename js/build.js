@@ -297,7 +297,9 @@
                   return connection.findById(dataSourceEntryId);
                 }
               }).then((entry) => {
-                this.subscribe(connection, entry);
+                if (entry && ['informed', 'live'].includes(data.updateType)) {
+                  this.subscribe(connection, entry);
+                }
 
                 return entry;
               }).catch((error) => {

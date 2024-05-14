@@ -24,7 +24,8 @@ Fliplet.Widget.generateInterface({
       type: 'toggle',
       name: 'testMode',
       label: 'Enable test mode',
-      toggleLabel: 'Show the first entry found if no entry is specified'
+      toggleLabel: 'Show the first entry found if no entry is specified',
+      default: true
     },
     {
       type: 'radio',
