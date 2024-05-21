@@ -1,0 +1,11 @@
+{
+  "widgets": {
+    "recordContainer": {
+      "noDataContent": "No data found",
+      "errors": {
+        "loadingData": "Error loading data"
+      },
+      "testMode": "Test mode is enabled. The first entry found is shown if no entry is specified in the URL."
+    }
+  }
+}

@@ -6,29 +6,16 @@
   "icon": "img/icon.png",
   "tags": ["type:component", "category:layout", "beta:true"],
   "provider_only": false,
-  "references": [
-    "content:richContent"
-  ],
+  "references": ["content:richContent"],
   "html_tag": "div",
+  "settings": {
+    "interfaceWidgetPackage": "com.fliplet.helper-configuration"
+  },
   "interface": {
-    "dependencies": [
-      "vue.js",
-      "fliplet-core",
-      "fliplet-studio-ui"
-    ],
-    "assets": [
-      "dist/css/index.css",
-      "dist/app.js"
-    ]
+    "assets": ["js/interface.js"]
   },
   "build": {
-    "dependencies": [
-      "vue.js",
-      "fliplet-core",
-      "fliplet-datasources"
-    ],
-    "assets": [
-      "js/build.js"
-    ]
+    "dependencies": ["vue.js", "fliplet-core"],
+    "assets": ["css/build.css", "js/build.js"]
   }
 }

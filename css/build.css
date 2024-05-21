@@ -1,0 +1,11 @@
+fl-record-container .record-container-load-error {
+  text-align: center;
+}
+
+fl-record-container .record-container-test-mode {
+  margin-bottom: 10px;
+}
+
+fl-record {
+  position: relative;
+}
