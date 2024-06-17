@@ -9,7 +9,8 @@
   "references": ["content:richContent"],
   "html_tag": "div",
   "settings": {
-    "interfaceWidgetPackage": "com.fliplet.helper-configuration"
+    "interfaceWidgetPackage": "com.fliplet.helper-configuration",
+    "hideThemeSettings": true
   },
   "interface": {
     "assets": ["js/interface.js"]
