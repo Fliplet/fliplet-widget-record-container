@@ -10,9 +10,11 @@ fl-record {
   position: relative;
 }
 
-.mode-interact .view-is-empty {
-  border: 5px solid #D4D4D4!important;
+.mode-interact .fl-view-empty {
+  border: 1px dotted #D4D4D4!important;
   color: #6A6868!important;
-  font-size: 12px!important;
   font-family: "Open Sans", sans-serif;
+  font-size: 12px;
+  padding: 15px;
+  text-align: center;
 }
