@@ -61,6 +61,11 @@
         recordTag.setAttribute(':data-entry-id', 'entry.id');
         recordTag.setAttribute('v-bind', 'attrs');
 
+        recordTemplate = $('<div></div>').html(recordTemplate).find('[data-fl-widget-instance]').each(function(i, el) {
+          el.setAttribute('v-pre', '');
+          el.setAttribute('data-inside-vue', '');
+        }).end().html();
+
         $(recordTag).html(recordTemplate || (isInteract ? emptyTemplate : ''));
 
         return recordTag.outerHTML;
