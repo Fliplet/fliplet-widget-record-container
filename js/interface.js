@@ -11,7 +11,7 @@ Fliplet.Widget.generateInterface({
             readonly: true,
             dataSourceTitle: 'Get data from...',
             dataSourceId: dynamicContainer && dynamicContainer.dataSourceId,
-            helpText: 'To change this data source, go to the parent <strong>Dynamic container</strong>'
+            helpText: 'To change this data source, go to the parent <strong>Data container</strong>'
           };
         });
       }

@@ -339,7 +339,7 @@
             $(this.$el).translate();
 
             // eslint-disable-next-line no-console
-            console.error('[RECORD CONTAINER] Error fetching data', error);
+            console.error('[Single data record] Error fetching data', error);
             resolve(this);
           });
 
@@ -373,7 +373,7 @@
 
         if (!container) {
           if (options.ts > 5000) {
-            return Promise.reject('Record container not found after ' + Math.ceil(options.ts / 1000) + ' seconds.');
+            return Promise.reject('Single data record not found after ' + Math.ceil(options.ts / 1000) + ' seconds.');
           }
 
           // Containers can render over time, so we need to retry later in the process
