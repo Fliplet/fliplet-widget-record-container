@@ -3,10 +3,7 @@
 
   const recordContainerInstances = {};
   const isInteract = Fliplet.Env.get('interact');
-
-  const sampleData = isInteract
-    ? { id: 1, data: {} }
-    : undefined;
+  const sampleData = isInteract ? { id: 1, data: {} } : undefined;
 
   function getHtmlKeyFromPath(path) {
     return `data${CryptoJS.MD5(path).toString().substr(-6)}`;
@@ -16,347 +13,293 @@
     return path.startsWith('$') ? path.substr(1) : `entry.data.${path}`;
   }
 
-  function errorMessageStructureNotValid($element, message) {
-    $element.addClass('component-error-before');
-    Fliplet.UI.Toast(message);
-  }
+  class RecordContainer {
+    constructor(element, data) {
+      this.element = element;
+      this.data = data;
+      this.id = data.id;
+      this.name = data.name;
+      this.isLoading = false;
+      this.error = undefined;
+      this.entry = undefined;
+      this.noDataTemplate = data.noDataContent || T('widgets.recordContainer.noDataContent');
+      this.testMode = data.testMode;
+      this.parent = undefined;
+      this.pendingUpdates = {
+        updated: [],
+        deleted: []
+      };
+      this.recordTemplatePaths = [];
+      this.testDataObject = {};
 
-  Fliplet.Widget.instance('record-container', async function(data) {
-    const $recordTemplate = $(this).find('template[name="record"]').eq(0);
-    const $emptyTemplate = $(this).find('template[name="empty"]').eq(0);
-    const templateViewName = 'content';
-    const templateNodeName = 'Content';
-    const recordTemplatePaths = [];
-    const testDataObject = {};
-    let compiledRecordTemplate;
-
-    let recordTemplate = $('<div></div>').html($recordTemplate.html() || '').find('fl-prop[data-path]').each(function(i, el) {
-      const path = normalizePath(el.getAttribute('data-path'));
-      let pathObject = _.get(testDataObject, path);
-
-      if (!pathObject) {
-        // Provide a unique alphanumeric key for the path suitable for v-html
-        pathObject = { path, key: getHtmlKeyFromPath(path) };
-        _.set(testDataObject, path, pathObject);
-        recordTemplatePaths.push(pathObject);
-      }
-
-      el.setAttribute('v-html', `data.${ pathObject.key }`);
-    }).end().html();
-    const emptyTemplate = $emptyTemplate.html();
-
-    $recordTemplate.remove();
-    $emptyTemplate.remove();
-
-    let [parent] = await Fliplet.Widget.findParents({
-      instanceId: data.id,
-      filter: { package: 'com.fliplet.dynamic-container' }
-    });
-
-    if (parent) {
-      parent = await Fliplet.DynamicContainer.get(parent.id);
-    } else {
-      errorMessageStructureNotValid($(this.$el), 'This component needs to be placed inside a Dynamic Container and select a data source');
+      this.init();
     }
 
-    const container = new Promise((resolve) => {
-      let loadData;
+    async init() {
+      // Initialize templates
+      this.$recordTemplate = $(this.element).find('template[name="record"]').eq(0);
+      this.$emptyTemplate = $(this.element).find('template[name="empty"]').eq(0);
 
-      function getTemplateForHtml() {
-        const recordTag = document.createElement('fl-record');
+      // Process record template
+      this.processRecordTemplate();
 
-        recordTag.setAttribute(':data-entry-id', 'entry.id');
-        recordTag.setAttribute('v-bind', 'attrs');
+      // Find parent
+      [this.parent] = await Fliplet.Widget.findParents({
+        instanceId: this.data.id,
+        filter: { package: 'com.fliplet.dynamic-container' }
+      });
 
-        $(recordTag).html(recordTemplate || (isInteract ? emptyTemplate : ''));
-
-        return recordTag.outerHTML;
+      if (this.parent) {
+        this.parent = await Fliplet.DynamicContainer.get(this.parent.id);
       }
 
-      compiledRecordTemplate = Vue.compile(getTemplateForHtml());
+      // Initialize container
+      await this.initializeContainer();
 
-      // Get the current data source entry ID from the URL
-      let dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
+      // Setup event listeners
+      this.setupEventListeners();
+    }
 
-      // Record component
-      const recordComponent = Vue.component(data.content, {
-        props: ['entry'],
-        data() {
-          const result = {
-            attrs: {
-              'data-view': templateViewName,
-              'data-node-name': templateNodeName
-            },
-            data: {},
-            viewContainer: undefined
-          };
+    processRecordTemplate() {
+      const recordTemplate = $('<div></div>').html(this.$recordTemplate.html() || '');
 
-          return result;
-        },
-        watch: {
-          entry() {
-            this.setData();
+      recordTemplate.find('fl-prop[data-path]').each((i, el) => {
+        const path = normalizePath(el.getAttribute('data-path'));
+        let pathObject = _.get(this.testDataObject, path);
 
-            Fliplet.Widget.initializeChildren(this.$el, this).then(() => {
-              Fliplet.Widget.autosize();
-            });
-          }
-        },
-        methods: {
-          setData() {
-            if (isInteract) {
-              return;
-            }
+        if (!pathObject) {
+          pathObject = { path, key: getHtmlKeyFromPath(path) };
+          _.set(this.testDataObject, path, pathObject);
+          this.recordTemplatePaths.push(pathObject);
+        }
 
-            // Loop through the record template paths and set the data for v-html
-            recordTemplatePaths.forEach((pathObject) => {
-              this.$set(this.data, pathObject.key, _.get(this, pathObject.path));
-            });
-          }
-        },
-        render(createElement) {
-          return compiledRecordTemplate.render.call(this, createElement);
-        },
-        mounted() {
-          this.setData();
+        el.setAttribute('data-html-key', pathObject.key);
+      });
 
-          Fliplet.Widget.initializeChildren(this.$el, this).then(() => {
-            Fliplet.Widget.autosize();
+      this.recordTemplate = recordTemplate.html();
+      this.emptyTemplate = this.$emptyTemplate.html();
+    }
+
+    async initializeContainer() {
+      this.showLoading();
+
+      try {
+        if (isInteract) {
+          this.entry = sampleData;
+        } else if (this.parent && typeof this.parent.connection === 'function') {
+          const connection = await this.parent.connection();
+          const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
+
+          const hookResult = await Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
+            container: this.element,
+            connection: connection,
+            instance: this,
+            dataSourceId: connection.id,
+            dataSourceEntryId
           });
 
-          if (!isInteract) {
-            return;
+          const query = Object.assign({}, ...hookResult);
+
+          if (Object.keys(query).length) {
+            this.entry = await connection.findOne(query);
+          } else if (dataSourceEntryId) {
+            this.entry = await connection.findById(dataSourceEntryId);
+          } else if (this.testMode) {
+            this.entry = await connection.findOne();
           }
 
-          /* Edit mode only */
+          if (this.entry && ['informed', 'live'].includes(this.data.updateType)) {
+            this.setupDataSubscription(connection);
+          }
+        }
 
-          this.viewContainer = new Fliplet.Interact.ViewContainer(this.$el, {
-            placeholder: emptyTemplate
+        this.render();
+
+        await Fliplet.Hooks.run('recordContainerDataRetrieved', {
+          container: this.element,
+          entry: this.entry,
+          instance: this
+        });
+      } catch (error) {
+        this.error = error;
+        console.error('[RECORD CONTAINER] Error fetching data', error);
+
+        await Fliplet.Hooks.run('recordContainerDataRetrieveError', {
+          instance: this,
+          error
+        });
+      } finally {
+        this.hideLoading();
+        $(this.element).translate();
+      }
+    }
+
+    setupDataSubscription(connection) {
+      const events = ['update'];
+
+      this.subscription = connection.subscribe(
+        { id: this.entry.id, events },
+        (bundle) => {
+          if (events.includes('update')) {
+            this.onUpdate(bundle.updated);
+          }
+
+          if (events.includes('delete')) {
+            this.onDelete(bundle.deleted);
+          }
+
+          if (this.data.updateType === 'live') {
+            this.applyUpdates();
+          } else if (this.hasPendingUpdates()) {
+            Fliplet.UI.Toast({
+              message: 'New data available',
+              duration: false,
+              actions: [
+                {
+                  label: 'Refresh',
+                  action: () => this.applyUpdates()
+                },
+                {
+                  icon: 'fa-times',
+                  title: 'Ignore',
+                  action: () => {}
+                }
+              ]
+            });
+          }
+        }
+      );
+    }
+
+    render() {
+      if (this.isLoading) {
+        this.element.innerHTML = '<p class="text-center"><i class="fa fa-refresh fa-spin fa-2x fa-fw"></i></p>';
+
+        return;
+      }
+
+      if (this.error) {
+        this.element.innerHTML = `
+          <div class="record-container-load-error">
+            <p data-translate="widgets.recordContainer.errors.loadingData"></p>
+            <p><small>${Fliplet.parseError(this.error)}</small></p>
+          </div>
+        `;
+
+        return;
+      }
+
+      if (!this.entry) {
+        this.element.innerHTML = `<p class="text-center">${this.noDataTemplate}</p>`;
+
+        return;
+      }
+
+      const recordElement = document.createElement('fl-record');
+
+      recordElement.setAttribute('data-entry-id', this.entry.id);
+      recordElement.setAttribute('data-view', 'content');
+      recordElement.setAttribute('data-node-name', 'Content');
+
+      recordElement.innerHTML = this.recordTemplate || (isInteract ? this.emptyTemplate : '');
+
+      // Update template data
+      if (!isInteract) {
+        this.recordTemplatePaths.forEach((pathObject) => {
+          const elements = recordElement.querySelectorAll(`[data-html-key="${pathObject.key}"]`);
+
+          elements.forEach(el => {
+            el.innerHTML = _.get(this.entry, pathObject.path) || '';
           });
+        });
+      }
+
+      this.element.innerHTML = '';
+      this.element.appendChild(recordElement);
+
+      if (isInteract) {
+        this.viewContainer = new Fliplet.Interact.ViewContainer(recordElement, {
+          placeholder: this.emptyTemplate
+        });
+      }
+
+      Fliplet.Widget.initializeChildren(this.element, this).then(() => {
+        Fliplet.Widget.autosize();
+      });
+    }
+
+    showLoading() {
+      this.isLoading = true;
+      this.render();
+    }
+
+    hideLoading() {
+      this.isLoading = false;
+      this.render();
+    }
+
+    hasPendingUpdates() {
+      return Object.values(this.pendingUpdates).some(value => value.length);
+    }
+
+    onUpdate(updates = []) {
+      updates.forEach(update => {
+        const existingIndex = this.pendingUpdates.updated.findIndex(row => row.id === update.id);
+
+        if (existingIndex !== -1) {
+          this.pendingUpdates.updated[existingIndex] = update;
+        } else {
+          this.pendingUpdates.updated.push(update);
+        }
+      });
+    }
+
+    onDelete(deletions = []) {
+      deletions.forEach(deletion => {
+        const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion.id);
+
+        if (updatedIndex !== -1) {
+          this.pendingUpdates.updated.splice(updatedIndex, 1);
+        }
+
+        if (!this.pendingUpdates.deleted.includes(deletion.id)) {
+          this.pendingUpdates.deleted.push(deletion.id);
+        }
+      });
+    }
+
+    applyUpdates() {
+      this.pendingUpdates.updated.forEach(update => {
+        if (update.id === this.entry.id) {
+          this.entry = update;
         }
       });
 
-      // Find child props
-      const vm = new Vue({
-        el: this,
-        id: data.id,
-        name: data.name,
-        data: {
-          isLoading: false,
-          error: undefined,
-          entry: undefined,
-          noDataTemplate: data.noDataContent || T('widgets.recordContainer.noDataContent'),
-          testMode: data.testMode,
-          parent,
-          pendingUpdates: {
-            updated: [],
-            deleted: []
-          }
-        },
-        computed: {
-          hasPendingUpdates() {
-            return Object.values(this.pendingUpdates).some(value => value.length);
-          }
-        },
-        components: {
-          record: recordComponent
-        },
-        filters: {
-          parseError(error) {
-            return Fliplet.parseError(error);
-          }
-        },
-        methods: {
-          onUpdate(updates = []) {
-            updates.forEach(update => {
-              // Otherwise, update or add to the updated array
-              const existingIndex = this.pendingUpdates.updated.findIndex(row => row.id === update.id);
-
-              if (existingIndex !== -1) {
-                this.$set(this.pendingUpdates.updated, existingIndex, update);
-              } else {
-                this.pendingUpdates.updated.push(update);
-              }
-            });
-          },
-          onDelete(deletions = []) {
-            deletions.forEach(deletion => {
-              // Remove from updated if present
-              const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion.id);
-
-              if (updatedIndex !== -1) {
-                this.pendingUpdates.updated.splice(updatedIndex, 1);
-              }
-
-              // Finally, add to deleted if not already there and not in inserted
-              if (!this.pendingUpdates.deleted.includes(deletion.id)) {
-                this.pendingUpdates.deleted.push(deletion.id);
-              }
-            });
-          },
-          applyUpdates() {
-            // Apply updated entries
-            this.pendingUpdates.updated.forEach(update => {
-              if (update.id !== this.entry.id) {
-                return;
-              }
-
-              this.entry = update;
-            });
-
-            // Remove deleted entries
-            this.pendingUpdates.deleted.forEach(deletedId => {
-              if (deletedId.id !== this.entry.id) {
-                return;
-              }
-
-              this.entry = undefined;
-            });
-
-            // Reset pendingUpdates
-            this.pendingUpdates = {
-              updated: [],
-              deleted: []
-            };
-          },
-          subscribe(connection, entry) {
-            if (!entry) {
-              return; // No entry to subscribe to
-            }
-
-            switch (data.updateType) {
-              case 'informed':
-              case 'live':
-                // Deletions can be handled but currently isn't being monitored
-                // because API is incomplete to provide the necessary information
-                var events = ['update'];
-
-                this.subscription = connection.subscribe({ id: entry.id, events }, (bundle) => {
-                  if (events.includes('update')) {
-                    this.onUpdate(bundle.updated);
-                  }
-
-                  if (events.includes('delete')) {
-                    this.onDelete(bundle.deleted);
-                  }
-
-                  if (data.updateType === 'live') {
-                    this.applyUpdates();
-                  } else if (this.hasPendingUpdates) {
-                    // Show toast message
-                    Fliplet.UI.Toast({
-                      message: 'New data available',
-                      duration: false,
-                      actions: [
-                        {
-                          label: 'Refresh',
-                          action() {
-                            vm.applyUpdates();
-                          }
-                        },
-                        {
-                          icon: 'fa-times',
-                          title: 'Ignore',
-                          action() {
-                            // Do nothing
-                          }
-                        }
-                      ]
-                    });
-                  }
-                });
-                break;
-              case 'none':
-              default:
-                break;
-            }
-          }
-        },
-        mounted() {
-          if (isInteract) {
-            loadData = Promise.resolve(sampleData);
-          } else if (parent && typeof parent.connection === 'function') {
-            this.isLoading = true;
-            this.error = undefined;
-
-            loadData = parent.connection().then((connection) => {
-              return Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
-                container: this.$el,
-                connection: connection,
-                instance: this,
-                dataSourceId: connection.id,
-                dataSourceEntryId
-              }).then((result) => {
-                // Merge all results into a single object
-                result = _.extend.apply(this, [{}].concat(result));
-
-                // If the result is an object and it has keys, we assume it's a query
-                if (typeof result === 'object' && Object.keys(result).length) {
-                  return connection.findOne(result);
-                }
-
-                if (!dataSourceEntryId && this.testMode) {
-                  return connection.findOne();
-                }
-
-                // Load the entry by ID
-                if (dataSourceEntryId) {
-                  return connection.findById(dataSourceEntryId);
-                }
-              }).then((entry) => {
-                if (entry && ['informed', 'live'].includes(data.updateType)) {
-                  this.subscribe(connection, entry);
-                }
-
-                return entry;
-              }).catch((error) => {
-                if (error && error.status === 404) {
-                  return Promise.resolve();
-                }
-
-                return Promise.reject(error);
-              });
-            });
-          } else {
-            loadData = Promise.resolve();
-          }
-
-          loadData.then((entry) => {
-            this.isLoading = false;
-
-            // Set the entry data
-            this.entry = entry;
-
-            // Resolve the promise and return the Vue instance
-            resolve(this);
-
-            Fliplet.Hooks.run('recordContainerDataRetrieved', {
-              container: this.$el,
-              entry,
-              instance: this
-            });
-
-            $(this.$el).translate();
-          }).catch((error) => {
-            this.isLoading = false;
-            this.error = error;
-
-            Fliplet.Hooks.run('recordContainerDataRetrieveError', { instance: this, error });
-
-            $(this.$el).translate();
-
-            // eslint-disable-next-line no-console
-            console.error('[RECORD CONTAINER] Error fetching data', error);
-            resolve(this);
-          });
-
-          resolve(this);
+      this.pendingUpdates.deleted.forEach(deletedId => {
+        if (deletedId === this.entry.id) {
+          this.entry = undefined;
         }
       });
-    });
 
-    container.id = data.id;
+      this.pendingUpdates = {
+        updated: [],
+        deleted: []
+      };
+
+      this.render();
+    }
+
+    setupEventListeners() {
+      // Add any necessary event listeners here
+    }
+  }
+
+  Fliplet.Widget.instance('record-container', function(data) {
+    const container = new RecordContainer(this, data);
+
     recordContainerInstances[data.id] = container;
+
+    return container;
   }, {
     supportsDynamicContext: true
   });
@@ -370,12 +313,12 @@
 
     return Fliplet().then(function() {
       return Promise.all(_.values(recordContainerInstances)).then(function(containers) {
-        var container;
+        let container;
 
         if (typeof filter === 'undefined') {
           container = containers.length ? containers[0] : undefined;
         } else {
-          _.find(containers, filter);
+          container = _.find(containers, filter);
         }
 
         if (!container) {
@@ -383,11 +326,9 @@
             return Promise.reject('Record container not found after ' + Math.ceil(options.ts / 1000) + ' seconds.');
           }
 
-          // Containers can render over time, so we need to retry later in the process
           return new Promise(function(resolve) {
             setTimeout(function() {
               options.ts = options.ts * 1.5;
-
               Fliplet.RecordContainer.get(filter, options).then(resolve);
             }, options.ts);
           });
