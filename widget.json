@@ -1,15 +1,16 @@
 {
-  "name": "Record container",
+  "name": "Single data record",
   "package": "com.fliplet.record-container",
   "version": "1.0.0",
   "description": "",
   "icon": "img/icon.png",
-  "tags": ["type:component", "category:layout"],
+  "tags": ["type:component", "category:layout", "beta:true"],
   "provider_only": false,
   "references": ["content:richContent"],
   "html_tag": "div",
   "settings": {
-    "interfaceWidgetPackage": "com.fliplet.helper-configuration"
+    "interfaceWidgetPackage": "com.fliplet.helper-configuration",
+    "hideThemeSettings": true
   },
   "interface": {
     "assets": ["js/interface.js"]
