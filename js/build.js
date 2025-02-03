@@ -49,6 +49,7 @@
         filter: { package: 'com.fliplet.dynamic-container' }
       });
 
+
       if (!this.parent) {
         Fliplet.UI.Toast('Please add this component inside a Data container');
 
