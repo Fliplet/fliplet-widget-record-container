@@ -1,4 +1,4 @@
-# Fliplet Data Record Container Widget
+# Fliplet Data Record Widget
 
 ## Development
 

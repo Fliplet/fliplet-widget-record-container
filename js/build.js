@@ -53,7 +53,7 @@
       if (!this.parent) {
         Fliplet.UI.Toast('Please add this component inside a Data container');
 
-        return Promise.reject('Single record container must be placed inside a Data container');
+        return Promise.reject('Data record must be placed inside a Data container');
       }
 
       this.parent = await Fliplet.DynamicContainer.get(this.parent.id);
@@ -133,7 +133,7 @@
         });
       } catch (error) {
         this.error = error;
-        console.error('[RECORD CONTAINER] Error fetching data', error);
+        console.error('[DATA RECORD] Error fetching data', error);
 
         await Fliplet.Hooks.run('recordContainerDataRetrieveError', {
           instance: this,
@@ -334,7 +334,7 @@
 
         if (!container) {
           if (options.ts > 5000) {
-            return Promise.reject('Record container not found after ' + Math.ceil(options.ts / 1000) + ' seconds.');
+            return Promise.reject('Data record not found after ' + Math.ceil(options.ts / 1000) + ' seconds.');
           }
 
           return new Promise(function(resolve) {
