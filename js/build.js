@@ -255,14 +255,14 @@
 
     onDelete(deletions = []) {
       deletions.forEach(deletion => {
-        const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion);
+        const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion.id);
 
         if (updatedIndex !== -1) {
           this.pendingUpdates.updated.splice(updatedIndex, 1);
         }
 
-        if (!this.pendingUpdates.deleted.includes(deletion)) {
-          this.pendingUpdates.deleted.push(deletion);
+        if (!this.pendingUpdates.deleted.includes(deletion.id)) {
+          this.pendingUpdates.deleted.push(deletion.id);
         }
 
         const deletedEntriesKey = `deleted-entries-${this.dataSourceId}`;
