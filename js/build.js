@@ -31,7 +31,6 @@
       };
       this.recordTemplatePaths = [];
       this.testDataObject = {};
-      this.dataSourceId = undefined;
 
       this.init();
     }
@@ -101,9 +100,25 @@
         } else if (this.parent && typeof this.parent.connection === 'function') {
           const connection = await this.parent.connection();
           const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
-          this.dataSourceId = connection.id;
 
-          await this.retrieveEntryData(connection, dataSourceEntryId);
+          const hookResult = await Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
+            container: this.element,
+            connection: connection,
+            instance: this,
+            dataSourceId: connection.id,
+            dataSourceEntryId
+          });
+
+          const query = Object.assign({}, ...hookResult);
+
+          if (Object.keys(query).length) {
+            this.entry = await connection.findOne(query);
+          } else if (dataSourceEntryId) {
+            this.entry = await connection.findById(dataSourceEntryId);
+          } else if (this.testMode) {
+            this.entry = await connection.findOne();
+          }
+
           if (this.entry && ['informed', 'live'].includes(this.data.updateType)) {
             this.setupDataSubscription(connection);
           }
@@ -131,10 +146,7 @@
     }
 
     setupDataSubscription(connection) {
-      if (this.subscription) {
-        this.subscription.unsubscribe();
-      }
-      const events = ['update', 'delete'];
+      const events = ['update'];
 
       this.subscription = connection.subscribe(
         { id: this.entry.id, events },
@@ -255,61 +267,30 @@
 
     onDelete(deletions = []) {
       deletions.forEach(deletion => {
-        const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion);
+        const updatedIndex = this.pendingUpdates.updated.findIndex(row => row.id === deletion.id);
 
         if (updatedIndex !== -1) {
           this.pendingUpdates.updated.splice(updatedIndex, 1);
         }
 
-        if (!this.pendingUpdates.deleted.includes(deletion)) {
-          this.pendingUpdates.deleted.push(deletion);
+        if (!this.pendingUpdates.deleted.includes(deletion.id)) {
+          this.pendingUpdates.deleted.push(deletion.id);
         }
-
-        const deletedEntriesKey = `deleted-entries-${this.dataSourceId}`;
-        localStorage.removeItem(deletedEntriesKey);
       });
     }
 
-    async retrieveEntryData(connection, dataSourceEntryId) {
-      const hookResult = await Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
-        container: this.element,
-        connection: connection,
-        instance: this,
-        dataSourceId: connection.id,
-        dataSourceEntryId
-      });
-
-      const query = Object.assign({}, ...hookResult);
-
-      if (Object.keys(query).length) {
-        this.entry = await connection.findOne(query);
-      } else if (dataSourceEntryId) {
-        this.entry = await connection.findById(dataSourceEntryId);
-      } else if (this.testMode) {
-        this.entry = await connection.findOne();
-      }
-    }
-
-    async applyUpdates() {
+    applyUpdates() {
       this.pendingUpdates.updated.forEach(update => {
         if (update.id === this.entry.id) {
           this.entry = update;
         }
       });
 
-      for (const deletedId of this.pendingUpdates.deleted) {
+      this.pendingUpdates.deleted.forEach(deletedId => {
         if (deletedId === this.entry.id) {
-          if (this.parent && typeof this.parent.connection === 'function') {
-            const connection = await this.parent.connection();
-            const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
-
-            await this.retrieveEntryData(connection, dataSourceEntryId);
-
-            this.subscription.unsubscribe();
-            this.setupDataSubscription(connection);
-          }
+          this.entry = undefined;
         }
-      }
+      });
 
       this.pendingUpdates = {
         updated: [],
