@@ -264,9 +264,6 @@
         if (!this.pendingUpdates.deleted.includes(deletion.id)) {
           this.pendingUpdates.deleted.push(deletion.id);
         }
-
-        const deletedEntriesKey = `deleted-entries-${this.dataSourceId}`;
-        localStorage.removeItem(deletedEntriesKey);
       });
     }
 
