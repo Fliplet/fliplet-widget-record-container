@@ -31,6 +31,7 @@
       };
       this.recordTemplatePaths = [];
       this.testDataObject = {};
+      this.dataSourceId = undefined;
 
       this.init();
     }
@@ -100,25 +101,9 @@
         } else if (this.parent && typeof this.parent.connection === 'function') {
           const connection = await this.parent.connection();
           const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
+          this.dataSourceId = connection.id;
 
-          const hookResult = await Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
-            container: this.element,
-            connection: connection,
-            instance: this,
-            dataSourceId: connection.id,
-            dataSourceEntryId
-          });
-
-          const query = Object.assign({}, ...hookResult);
-
-          if (Object.keys(query).length) {
-            this.entry = await connection.findOne(query);
-          } else if (dataSourceEntryId) {
-            this.entry = await connection.findById(dataSourceEntryId);
-          } else if (this.testMode) {
-            this.entry = await connection.findOne();
-          }
-
+          await this.retrieveEntryData(connection, dataSourceEntryId);
           if (this.entry && ['informed', 'live'].includes(this.data.updateType)) {
             this.setupDataSubscription(connection);
           }
@@ -146,7 +131,10 @@
     }
 
     setupDataSubscription(connection) {
-      const events = ['update'];
+      if (this.subscription) {
+        this.subscription.unsubscribe();
+      }
+      const events = ['update', 'delete'];
 
       this.subscription = connection.subscribe(
         { id: this.entry.id, events },
@@ -279,18 +267,46 @@
       });
     }
 
-    applyUpdates() {
+    async retrieveEntryData(connection, dataSourceEntryId) {
+      const hookResult = await Fliplet.Hooks.run('recordContainerBeforeRetrieveData', {
+        container: this.element,
+        connection: connection,
+        instance: this,
+        dataSourceId: connection.id,
+        dataSourceEntryId
+      });
+
+      const query = Object.assign({}, ...hookResult);
+
+      if (Object.keys(query).length) {
+        this.entry = await connection.findOne(query);
+      } else if (dataSourceEntryId) {
+        this.entry = await connection.findById(dataSourceEntryId);
+      } else if (this.testMode) {
+        this.entry = await connection.findOne();
+      }
+    }
+
+    async applyUpdates() {
       this.pendingUpdates.updated.forEach(update => {
         if (update.id === this.entry.id) {
           this.entry = update;
         }
       });
 
-      this.pendingUpdates.deleted.forEach(deletedId => {
+      for (const deletedId of this.pendingUpdates.deleted) {
         if (deletedId === this.entry.id) {
-          this.entry = undefined;
+          if (this.parent && typeof this.parent.connection === 'function') {
+            const connection = await this.parent.connection();
+            const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
+
+            await this.retrieveEntryData(connection, dataSourceEntryId);
+
+            this.subscription.unsubscribe();
+            this.setupDataSubscription(connection);
+          }
         }
-      });
+      }
 
       this.pendingUpdates = {
         updated: [],
