@@ -300,13 +300,15 @@
       for (const deletedId of this.pendingUpdates.deleted) {
         if (deletedId === this.entry.id) {
           if (this.parent && typeof this.parent.connection === 'function') {
-            const connection = await this.parent.connection();
-            const dataSourceEntryId = Fliplet.Navigate.query.dataSourceEntryId;
+              if (this.subscription && typeof this.subscription.unsubscribe === 'function') {
+              this.subscription.unsubscribe();
+              }
 
-            await this.retrieveEntryData(connection, dataSourceEntryId);
+              if (!isInteract && Fliplet && Fliplet.Navigate && typeof Fliplet.Navigate.back === 'function') {
+                Fliplet.Navigate.back();
+              }
 
-            this.subscription.unsubscribe();
-            this.setupDataSubscription(connection);
+              this.setupDataSubscription(connection);
           }
         }
       }
