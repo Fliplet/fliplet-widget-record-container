@@ -281,12 +281,13 @@
         Fliplet.Widget.autosize();
       });
 
-      requestAnimationFrame(async() => {
-        const hasSocialIcons = !!this.element.querySelector('[data-widget-package="com.fliplet.social-icons"]');
-        if(hasSocialIcons) {
-         await this.getGlobalSocialActionsDS();
-         await this.getCachedSessionData();
-        }
+      requestAnimationFrame(async () => {
+        const hasSocialIcons = Boolean(this.element.querySelector('[data-widget-package="com.fliplet.social-icons"]'));
+        if (!hasSocialIcons) return;
+        await Promise.all([
+          this.getGlobalSocialActionsDS(),
+          this.getCachedSessionData()
+        ]);
       });
     }
 
