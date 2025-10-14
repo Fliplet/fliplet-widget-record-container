@@ -132,11 +132,11 @@
 
       recordTemplate.find('fl-prop[data-path]').each((i, el) => {
         const path = normalizePath(el.getAttribute('data-path'));
-        let pathObject = _.get(this.testDataObject, path);
+        let pathObject = Fliplet.Utils.get(this.testDataObject, path);
 
         if (!pathObject) {
           pathObject = { path, key: getHtmlKeyFromPath(path) };
-          _.set(this.testDataObject, path, pathObject);
+          Fliplet.Utils.set(this.testDataObject, path, pathObject);
           this.recordTemplatePaths.push(pathObject);
         }
 
@@ -263,7 +263,7 @@
           const elements = recordElement.querySelectorAll(`[data-html-key="${pathObject.key}"]`);
 
           elements.forEach(el => {
-            el.innerHTML = _.get(this.entry, pathObject.path) || '';
+            el.innerHTML = Fliplet.Utils.get(this.entry, pathObject.path) || '';
           });
         });
       }
@@ -472,13 +472,13 @@
     options = options || { ts: 10 };
 
     return Fliplet().then(function() {
-      return Promise.all(_.values(recordContainerInstances)).then(function(containers) {
+      return Promise.all(Fliplet.Utils.values(recordContainerInstances)).then(function(containers) {
         let container;
 
         if (typeof filter === 'undefined') {
           container = containers.length ? containers[0] : undefined;
         } else {
-          container = _.find(containers, filter);
+          container = Fliplet.Utils.find(containers, filter);
         }
 
         if (!container) {
@@ -505,12 +505,12 @@
     }
 
     return Fliplet().then(function() {
-      return Promise.all(_.values(recordContainerInstances)).then(function(containers) {
+      return Promise.all(Fliplet.Utils.values(recordContainerInstances)).then(function(containers) {
         if (typeof filter === 'undefined') {
           return containers;
         }
 
-        return _.filter(containers, filter);
+        return Fliplet.Utils.filter(containers, filter);
       });
     });
   };
